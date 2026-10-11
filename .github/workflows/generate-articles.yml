@@ -1,0 +1,41 @@
+name: Generate magazine articles
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'מאמרים/**'
+      - 'scripts/generate_articles.py'
+      - '.github/workflows/generate-articles.yml'
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate article pages
+        run: python scripts/generate_articles.py
+
+      - name: Commit generated pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add articles/ sitemap.xml
+          if ! git diff --cached --quiet; then
+            git commit -m "Generate magazine article pages"
+            git push
+          fi
