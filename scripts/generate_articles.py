@@ -12,6 +12,14 @@ SITE = "https://isragays.github.io"
 
 OUTPUT.mkdir(parents=True, exist_ok=True)
 
+CATEGORIES = {
+    "community": "חברה וקהילה",
+    "news": "חדשות",
+    "relationships": "היכרויות וזוגיות",
+    "guides": "מדריכים",
+    "events": "אירועים",
+}
+
 
 def escape(value):
     return html.escape(str(value or ""), quote=True)
@@ -52,11 +60,31 @@ def clean_html(value):
     return text
 
 
+def format_date(value):
+    value = str(value or "").strip()
+
+    match = re.match(
+        r"^(\d{4})-(\d{2})-(\d{2})",
+        value,
+    )
+
+    if match:
+        year, month, day = match.groups()
+        return f"{day}.{month}.{year}"
+
+    return value
+
+
 def article_html(data, filename):
     title = escape(data.get("title", "כתבה"))
     description = escape(data.get("description", ""))
-    date = escape(data.get("date", ""))
-    category = escape(data.get("category", ""))
+
+    raw_category = str(data.get("category") or "")
+    category = escape(
+        CATEGORIES.get(raw_category, raw_category)
+    )
+
+    date = escape(format_date(data.get("date", "")))
     body = clean_html(data.get("body", ""))
 
     image = str(data.get("image") or "")
@@ -119,16 +147,24 @@ body {{
 
 header {{
     background: #101e33;
-    padding: 22px;
+    padding: 25px 15px;
     text-align: center;
     border-bottom: 1px solid #a88b52;
 }}
 
-header a {{
-    color: #e4c789;
+.logo-link {{
+    display: inline-block;
     text-decoration: none;
-    font-size: 27px;
-    font-weight: 800;
+}}
+
+.site-logo {{
+    display: block;
+    width: auto;
+    max-width: min(85vw, 320px);
+    max-height: 110px;
+    height: auto;
+    object-fit: contain;
+    margin: 0 auto;
 }}
 
 main {{
@@ -146,29 +182,55 @@ h1 {{
 .subtitle {{
     font-size: 21px;
     color: #cbd3df;
+    margin: 22px 0;
 }}
 
 .meta {{
     color: #d7bd85;
     margin: 18px 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+}}
+
+.category {{
+    display: inline-block;
+    border: 1px solid #a88b52;
+    border-radius: 20px;
+    padding: 2px 14px;
+    color: #e4c789;
+    font-weight: 700;
+}}
+
+.date {{
+    color: #b8c2d0;
 }}
 
 .cover {{
+    display: block;
     width: 100%;
     max-height: 470px;
     object-fit: cover;
     border-radius: 16px;
-    margin: 20px 0;
+    margin: 25px 0;
 }}
 
 .content {{
     font-size: 20px;
+    line-height: 1.9;
     overflow-wrap: anywhere;
+}}
+
+.content p {{
+    margin: 0 0 20px;
 }}
 
 .content img {{
     max-width: 100%;
     height: auto;
+    border-radius: 12px;
 }}
 
 .content a {{
@@ -179,18 +241,57 @@ h1 {{
 .content h3 {{
     color: #e4c789;
     line-height: 1.4;
+    margin-top: 35px;
+}}
+
+.content blockquote {{
+    margin: 25px 0;
+    padding: 10px 20px;
+    border-right: 3px solid #d7bd85;
+    background: #101e33;
 }}
 
 .back {{
     display: inline-block;
     margin: 35px 0;
     color: #e4c789;
+    font-size: 18px;
+    text-decoration: none;
+}}
+
+.back:hover {{
+    text-decoration: underline;
 }}
 
 footer {{
     text-align: center;
-    padding: 30px;
+    padding: 30px 15px;
     color: #aab5c5;
+    border-top: 1px solid #26344a;
+}}
+
+@media (max-width: 600px) {{
+    header {{
+        padding: 20px 12px;
+    }}
+
+    .site-logo {{
+        max-width: 75vw;
+        max-height: 85px;
+    }}
+
+    main {{
+        margin: 25px auto;
+        padding: 0 18px;
+    }}
+
+    .subtitle {{
+        font-size: 19px;
+    }}
+
+    .content {{
+        font-size: 18px;
+    }}
 }}
 </style>
 </head>
@@ -198,14 +299,23 @@ footer {{
 <body>
 
 <header>
-<a href="/">ישראגייז 🇮🇱 🏳️‍🌈</a>
+    <a class="logo-link" href="/" aria-label="ישראגייז - עמוד הבית">
+        <img
+            class="site-logo"
+            src="/logo.png"
+            alt="ישראגייז"
+        >
+    </a>
 </header>
 
 <main>
 
 <article>
 
-<div class="meta">{category} {date}</div>
+<div class="meta">
+    <span class="category">{category}</span>
+    <span class="date">{date}</span>
+</div>
 
 <h1>{title}</h1>
 
@@ -219,7 +329,9 @@ footer {{
 
 </article>
 
-<a class="back" href="/magazine.html">← חזרה למגזין</a>
+<a class="back" href="/magazine.html">
+    → חזרה למגזין
+</a>
 
 </main>
 
@@ -238,13 +350,14 @@ urls = [
 
 for source in sorted(SOURCE.glob("*.json")):
     try:
-        data = json.loads(source.read_text(encoding="utf-8"))
+        data = json.loads(
+            source.read_text(encoding="utf-8")
+        )
 
         if not isinstance(data, dict):
             continue
 
         filename = source.stem
-
         output = OUTPUT / f"{filename}.html"
 
         output.write_text(
@@ -259,7 +372,9 @@ for source in sorted(SOURCE.glob("*.json")):
         print(f"Generated: {output.name}")
 
     except (OSError, ValueError, TypeError) as error:
-        print(f"Error processing {source.name}: {error}")
+        print(
+            f"Error processing {source.name}: {error}"
+        )
         raise
 
 
@@ -270,7 +385,9 @@ ET.register_namespace(
 
 namespace = "http://www.sitemaps.org/schemas/sitemap/0.9"
 
-root = ET.Element(f"{{{namespace}}}urlset")
+root = ET.Element(
+    f"{{{namespace}}}urlset"
+)
 
 for url in urls:
     item = ET.SubElement(
@@ -294,4 +411,6 @@ tree.write(
     xml_declaration=True,
 )
 
-print(f"Done! Generated {len(urls) - 2} articles.")
+print(
+    f"Done! Generated {len(urls) - 2} articles."
+)
